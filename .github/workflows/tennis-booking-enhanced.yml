@@ -42,22 +42,80 @@ jobs:
           python -u book.py  # -u for unbuffered output
           echo "Finished booking script at $(date)"
           
-      - name: List and upload debug files
+      - name: Display debug files
         if: always()
         run: |
           echo "Debug files:"
           ls -la *.png || echo "No PNG files found"
           ls -la *.html || echo "No HTML files found"
           
-          # Create an archive of all debug files
-          mkdir -p debug_files
-          cp *.png debug_files/ 2>/dev/null || true
-          cp *.html debug_files/ 2>/dev/null || true
-          tar -czvf debug_files.tar.gz debug_files
+          # Create a summary of the debug files
+          echo "=== PNG Files ===" > debug_summary.txt
+          ls -la *.png >> debug_summary.txt 2>/dev/null || echo "No PNG files found" >> debug_summary.txt
           
-      - name: Upload debug archive
-        if: always()
-        uses: actions/upload-artifact@v1
-        with:
-          name: debug-files
-          path: debug_files.tar.gz
+          echo "=== HTML Files ===" >> debug_summary.txt
+          ls -la *.html >> debug_summary.txt 2>/dev/null || echo "No HTML files found" >> debug_summary.txt
+          
+          # Display the summary
+          cat debug_summary.txt
+          
+          # Also check My Reservations directly (as a final verification)
+          echo "Attempting to directly check reservations status..."
+          python -c '
+import os
+import requests
+import time
+from datetime import datetime
+
+# Configuration
+email = os.environ.get("COURTRESERVE_EMAIL")
+password = os.environ.get("COURTRESERVE_PASSWORD")
+
+# Setup session
+s = requests.Session()
+
+# Login
+login_data = {
+    "email": email,
+    "password": password
+}
+
+# Try to login
+try:
+    login_resp = s.post("https://mobileapp.courtreserve.com/Online/Account/Login/7629", data=login_data)
+    print(f"Login status: {login_resp.status_code}")
+    
+    # Wait a bit
+    time.sleep(3)
+    
+    # Check My Reservations
+    reservations = s.get("https://mobileapp.courtreserve.com/Online/Reservations/MyReservations/7629")
+    print(f"Reservations status: {reservations.status_code}")
+    
+    # Save the reservations page
+    with open("direct_reservations_check.html", "w") as f:
+        f.write(reservations.text)
+    
+    # Check for dates in the page
+    import re
+    from datetime import datetime, timedelta
+    
+    # Get current date
+    now = datetime.now()
+    
+    # Check for dates in the next 10 days
+    found_dates = []
+    for i in range(1, 10):
+        check_date = now + timedelta(days=i)
+        date_str = check_date.strftime("%b %d")  # Format like "Apr 22"
+        if date_str in reservations.text:
+            found_dates.append(date_str)
+    
+    if found_dates:
+        print(f"Found reservations for: {", ".join(found_dates)}")
+    else:
+        print("No upcoming reservations found")
+        
+except Exception as e:
+    print(f"Error checking reservations: {str(e)}")
+          '
