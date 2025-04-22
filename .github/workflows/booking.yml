@@ -1,0 +1,48 @@
+name: Court Booking Automation
+
+on:
+  schedule:
+    # Run at 11:59 AM Central Time (17:59 UTC) every day
+    - cron: '59 17 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  book-court:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium webdriver-manager pytz
+        
+    - name: Install Chrome
+      run: |
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Run booking script
+      env:
+        COURTRESERVE_EMAIL: ${{ secrets.COURTRESERVE_EMAIL }}
+        COURTRESERVE_PASSWORD: ${{ secrets.COURTRESERVE_PASSWORD }}
+      run: |
+        python book.py
+        
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        name: screenshots
+        path: |
+          *.png
+          *.html
