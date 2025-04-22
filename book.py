@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+import tempfile
 
 # Configure logging
 logging.basicConfig(
@@ -35,13 +36,40 @@ PREFERRED_DAYS = [0, 6, 4]  # Wednesday, Sunday, Friday 暂时2改成0
 def setup_driver():
     """Set up Chrome driver for testing"""
     chrome_options = Options()
-    # Comment out headless mode for testing
-    # chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--window-size=1920,1080")  # Set window size
-    chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration
-    chrome_options.add_argument("--no-sandbox")  # Required for running in some environments
-    chrome_options.add_argument("--disable-dev-shm-usage")  # Required for running in some environments
-    return webdriver.Chrome(options=chrome_options)
+    
+    # Add headless mode for GitHub Actions environment
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # Fix for "user data directory is already in use" error
+    temp_dir = tempfile.mkdtemp()
+    chrome_options.add_argument(f"--user-data-dir={temp_dir}")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    
+    # Add additional options to make it more stable in CI environment
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-software-rasterizer")
+    
+    # Use webdriver-manager to handle chromedriver installation
+    from webdriver_manager.chrome import ChromeDriverManager
+    from selenium.webdriver.chrome.service import Service
+    
+    try:
+        # Try using webdriver-manager
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+    except Exception as e:
+        logger.error(f"Error using webdriver-manager: {str(e)}")
+        # Fall back to default method
+        driver = webdriver.Chrome(options=chrome_options)
+    
+    # Set page load timeout
+    driver.set_page_load_timeout(60)
+    
+    return driver
 
 def login(driver):
     """Log in to CourtReserve using the actual HTML structure"""

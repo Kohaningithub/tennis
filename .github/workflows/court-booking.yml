@@ -12,10 +12,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v1
       
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v1
       with:
         python-version: '3.9'
         
@@ -38,11 +38,17 @@ jobs:
       run: |
         python book.py
         
-    - name: Upload screenshots
-      uses: actions/upload-artifact@v3.1.2
-      if: always()
-      with:
-        name: screenshots
-        path: |
-          *.png
-          *.html
+    # Skip artifact upload for now since it's causing issues
+    # - name: Create artifact directory
+    #   if: always()
+    #   run: |
+    #     mkdir -p artifacts
+    #     cp *.png artifacts/ || true
+    #     cp *.html artifacts/ || true
+    #     
+    # - name: Upload artifacts
+    #   uses: actions/upload-artifact@v1
+    #   if: always()
+    #   with:
+    #     name: screenshots
+    #     path: artifacts

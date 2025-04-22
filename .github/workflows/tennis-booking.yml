@@ -1,4 +1,4 @@
-name: Court Booking Automation
+name: Tennis Court Booking
 
 on:
   schedule:
@@ -12,10 +12,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v1
       
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v1
       with:
         python-version: '3.9'
         
@@ -38,11 +38,10 @@ jobs:
       run: |
         python book.py
         
-    - name: Upload screenshots
-      uses: actions/upload-artifact@v2
+    - name: List debug files
       if: always()
-      with:
-        name: screenshots
-        path: |
-          *.png
-          *.html
+      run: |
+        echo "PNG files:"
+        ls -la *.png || echo "No PNG files found"
+        echo "HTML files:"
+        ls -la *.html || echo "No HTML files found" 
